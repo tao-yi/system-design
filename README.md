@@ -53,7 +53,7 @@ Three different databases are chosen in this architecture.
   - passenger:
     - find Trip by passengerID
 
-```json
+```js
 Trip: {
 	_id: ObjectId,
   passenger: ObjectId,
