@@ -1,0 +1,51 @@
+@startuml
+
+actor "Driver App" as Driver
+actor "Passenger App" as Passenger
+participant "Load Balancer" as LB
+collections "Kafka REST proxy" as KafkaRest
+collections "Dada-Core-Service" as Coordinator
+collections "Apache Kafka" as Kafka
+collections "Kafka Connect Worker" as Connect
+collections "City-Dispatch-Service" as CityDispatcher
+database Cassandra
+database MongoDB
+database Redis
+
+group upload location data
+Driver -> LB: [HTTPS] upload driver location
+Passenger -> LB: [HTTPS] upload passenger location
+LB -> KafkaRest: [HTTP] forward
+KafkaRest -> Kafka: publish location data to message broker in real time
+Kafka --> KafkaRest: message received
+KafkaRest --> Driver: [HTTP] success
+KafkaRest --> Passenger: [HTTP] success
+Kafka -> Connect: publish to subscriber
+Connect -> Cassandra: pipe all location data directly into cassandra
+Connect -> Coordinator: [RPC] send most recent location data with driverID
+Coordinator -> Coordinator: - hash location into CityDispatchServiceID
+Coordinator -> Coordinator: - route request to corresponding service
+Coordinator -> CityDispatcher: [RPC] send most recent location of drivers
+CityDispatcher -> CityDispatcher: save most recent location\nin memory
+CityDispatcher -> CityDispatcher: update vehicle state, e.g. isOnTrip or not
+CityDispatcher -> Redis: save most recent location in Redis for backup
+CityDispatcher --> Coordinator: [RPC] success
+Coordinator --> Connect: [RPC] success
+Connect --> Kafka: ack
+
+end
+
+group passenger needs a ride
+
+Passenger -> LB: [Websocket] request a ride
+LB -> Coordinator: [Websocket] forward
+Coordinator -> Coordinator: hash location into CityDispatchServiceID\n- route request to corresponding service
+Coordinator -> CityDispatcher: [RPC] get closest drivers to the passenger
+CityDispatcher --> Coordinator: [RPC] return closest drivers to the passenger
+Coordinator -> Coordinator: found match, calculate ETA, create TRIP data
+Coordinator -> MongoDB: insert TRIP data
+Coordinator --> LB: [Websocket]: return TRIP
+LB --> Passenger: [Websocket]: forward notification, TRIP created for passenger
+end
+
+@enduml
