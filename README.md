@@ -46,7 +46,7 @@ Three different databases are chosen in this architecture.
 - 3 collections
   - Trip
   - Driver
-  - User
+  - Passenger
 - Design Goals:
   - driver:
     - find Trip by driverID
@@ -214,8 +214,6 @@ HTTP Response Code: 400
 }
 ```
 
-## Sequence Diagrams
-
 ## "Must Have" Design Goals
 
 ### 1. Availability
@@ -242,7 +240,7 @@ In this distributed system architecture, we guaranteed the transactions of Cassa
 
 After all, if we do lose data from application memory or Redis, we are always able to recover from data in Cassandra, so eventual consistency can be achieved.
 
-### 4. Fault-tolerance
+### 4. Transaction In Distributed System
 
 Many passengers may request a ride at same time in parallel, but one driver at any point of time can only have trip with one customer (if not sharing trip among customers).
 
